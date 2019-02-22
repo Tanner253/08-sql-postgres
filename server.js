@@ -15,8 +15,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Database Setup
-// Enter the three lines of code from Image 1
+const client = new pg.Client(process.env.DATABASE_URL);
+client.connect()
+client.on('error', err => console.error(err));
 
 // API Routes
 app.get('/location', (request, response) => {
@@ -29,7 +30,7 @@ app.get('/location', (request, response) => {
 })
 
 // Do not comment in until you have locations in the DB
-// app.get('/weather', getWeather);
+app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
 // app.get('/meetups', getMeetups);
@@ -48,10 +49,10 @@ function Location(query, res) {
   this.longitude = res.geometry.location.lng;
 }
 
-// function Weather(day) {
-//   this.forecast = day.summary;
-//   this.time = new Date(day.time * 1000).toString().slice(0, 15);
-// }
+function Weather(day) {
+  this.forecast = day.summary;
+  this.time = new Date(day.time * 1000).toString().slice(0, 15);
+}
 
 // function Meetup(meetup) {
 //   this.tableName = 'meetups';
@@ -73,6 +74,7 @@ function handleError(err, res) {
 
 function getLocation(query) {
   // CREATE the query string to check for the existence of the location
+  console.log('log console')
   const SQL = `SELECT * FROM locations WHERE search_query=$1;`;
   const values = [query];
 
@@ -90,7 +92,7 @@ function getLocation(query) {
 
         return superagent.get(url)
           .then(data => {
-            console.log('FROM API line 90');
+            console.log('FROM API line 90', data.body);
             // Throw an error if there is a problem with the API request
             if (!data.body.results.length) { throw 'no Data' }
 
@@ -123,9 +125,47 @@ function getLocation(query) {
     });
 }
 
-// function getWeather(request, response) {
-//   Enter the code from the second printout
-// }
+function getWeather(request, response) {
+  //create the query string to check for the existence of the location
+  const SQL = `SELECT * FROM weathers WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+
+  //make query of database
+  return client.query(SQL , values)
+    .then(result => {
+      //check to see if location is in DB
+      if(result.rowCount > 0){
+        console.log('from sql');
+        response.send(result.rows[0]);
+        //otherwise get info from api
+      }else {
+        const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+        superagent.get(url)
+          .then(result => {
+            const weatherSummaries = result.body.daily.data.map(day => {
+              const summary = new Weather(day);
+              return summary;
+            });
+            let newSQL =`INSERT INTO weathers(forecast, time, location_id) VALUES ($1, $2, $3);`;
+            console.log('148', weatherSummaries); //array of objects
+            weatherSummaries.forEach( summary => {
+              let newValues = Object.values(summary);
+              newValues.push(request.query.data.id);
+              //add record to DB
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('155', result.rows)
+                  //connect location id - used for other DB's
+                  console.log('158', result.rows[0].id)
+                })
+                .catch(console.error);
+            })
+            response.send(weatherSummaries);
+          })
+          .catch(error => handleError(error,response));
+      }
+    })
+}
 
 
 // function getMeetups(request, response) {
