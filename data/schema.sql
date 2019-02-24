@@ -29,13 +29,17 @@ CREATE TABLE IF NOT EXISTS trails (
     id SERIAL PRIMARY KEY,
     link VARCHAR(255),
     name VARCHAR(255),
-    distance VARCHAR(255),
+    
+    location VARCHAR(255),
+    length NUMERIC(3,2),
+    stars NUMERIC(2,1),
+    star_votes INTEGER,
+    summary VARCHAR(1000),
+    trail_url VARCHAR(255),
+    conditions VARCHAR(500),
     condition_date VARCHAR(255),
     condition_time VARCHAR(255),
-    conditions VARCHAR(255),
-    stars VARCHAR(255),
-    star_votes VARCHAR(255),
-    summary VARCHAR(255),
+
     location_id INTEGER NOT NULL, 
     FOREIGN KEY (location_id) REFERENCES locations (id)
 );

@@ -33,16 +33,16 @@ app.get('/location', (request, response) => {
 app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
-// app.get('/meetups', getMeetups);
+app.get('/meetups', getMeetups);
 
 //do not comment in until movies is working
-// app.get('/movies', getMovies)
+app.get('/movies', getMovies)
 
 //do not comment in until trails is working
 app.get('/trails', getTrails)
 
 //do not comment in until yelp is working.
-// app.get('/yelp', getYelp)
+app.get('/yelp', getYelp)
 
 // Make sure the server is listening for requests
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
@@ -67,7 +67,7 @@ function Movie(movie) {
   this.overview = movie.overview
 }
 function Trail(trail) {
-  this.tableName = 'Trails'
+  this.tableName = 'trails'
   this.link = trail.link;
   this.name = trail.name; //may need to adjust this per line 73
   this.location = trail.location;
@@ -204,44 +204,44 @@ function getWeather(request, response) {
     })
 }
 
-// function getMeetups (request, response) {
-//   const SQL = `SELECT * FROM meetups WHERE location_id=$1;`;
-//   const values = [request.query.data.id]
-//   // console.log('testing line 173', request.query.data.id)
-//   return client.query(SQL, values)
-//     .then(result => {
-//       if(result.rowCount > 0){
-//         console.log('from SQL');
-//         response.send(result.rows);
-//         //otherwise get new data from api
-//       } else {
-//         const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API_KEY}`;
-//         // console.log(url)
-//         superagent.get(url)
-//           .then(result => {
-//             const meetups = result.body.events.map(meetup => {
-//               const event = new Meetup(meetup)
-//               return event
-//             });
-//             let newSQL = `INSERT INTO meetups(link, name, creation_date, host, location_id) values ($1, $2, $3, $4, $5);`;
-//             console.log('190', meetups)
-//             meetups.forEach( meetup => {
-//               let newValues = Object.values(meetup);
-//               newValues.push(request.query.data.id);
-//               return client.query(newSQL, newValues)
-//                 .then(result => {
-//                   console.log('197', result.rows)
-//                   console.log('198', result.rows[0].id)
+function getMeetups (request, response) {
+  const SQL = `SELECT * FROM meetups WHERE location_id=$1;`;
+  const values = [request.query.data.id]
+  // console.log('testing line 173', request.query.data.id)
+  return client.query(SQL, values)
+    .then(result => {
+      if(result.rowCount > 0){
+        // console.log('from SQL');
+        response.send(result.rows);
+        //otherwise get new data from api
+      } else {
+        const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API_KEY}`;
+        // console.log(url)
+        superagent.get(url)
+          .then(result => {
+            const meetups = result.body.events.map(meetup => {
+              const event = new Meetup(meetup)
+              return event
+            });
+            let newSQL = `INSERT INTO meetups(link, name, creation_date, host, location_id) values ($1, $2, $3, $4, $5);`;
+            console.log('190', meetups)
+            meetups.forEach( meetup => {
+              let newValues = Object.values(meetup);
+              newValues.push(request.query.data.id);
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  // console.log('197', result.rows)
+                  // console.log('198', result.rows[0].id)
 
-//                 })
-//                 .catch(console.error);
-//             })
-//             response.send(meetups);
-//           })
-//           // .catch(error => handleError(error, response));
-//       }
-//     })
-// }
+                })
+                .catch(console.error);
+            })
+            response.send(meetups);
+          })
+          // .catch(error => handleError(error, response));
+      }
+    })
+}
 
 function getTrails (request, response) {
   const SQL = `SELECT * FROM trails WHERE location_id=$1;`;
@@ -252,17 +252,17 @@ function getTrails (request, response) {
       if(result.rowCount > 0){
         response.send(result.rows);
       } else {
-        const url = `https://www.hikingproject.com/data/get-trails?${request.query.data.longitude}&${request.query.data.longitude}&maxDistance=10&key=${process.env.TRAILS_API_KEY}`
+        const url = `https://www.hikingproject.com/data/get-trails?lat=${request.query.data.latitude}&lon=${request.query.data.longitude}&maxDistance=10&key=${process.env.TRAILS_API_KEY}`
         console.log(url);
         console.log(url);
         console.log(url);
         superagent.get(url)
           .then(result => {
-            const trails = result.body.events.map(trail => {
+            const trails = result.body.trails.map(trail => {
               const event = new Trail(trail)
               return event
             });
-            let newSQL = `INSERT INTO trails(link, name, location, distance, condition_date, condition_time, conditions, stars, star_votes, summary) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);`;
+            let newSQL = `INSERT INTO trails(name, location, length, stars, star_votes, summary, trail_url, conditions, condition_date, condition_time, location_id)  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
             trails.forEach( trail => {
               let newValues = Object.values(trail);
               newValues.push(request.query.data.id);
@@ -279,77 +279,78 @@ function getTrails (request, response) {
       }
     })
 }
-// function getMovies(request, response) {
-//   const SQL = `SELECT * FROM movies WHERE location_id=$1;`;
-//   const values = [request.query.data.id]
+function getMovies(request, response) {
+  const SQL = `SELECT * FROM movies WHERE location_id=$1;`;
+  const values = [request.query.data.id]
 
-//   return client.query(SQL, values)
-//     .then (result =>{
-//       if(result.rowCount > 0){
-//         response.send(result.rows);
-//       }else {
-
-
-//         const url = `https://api.themoviedb.org/3/discover/movie?api_key=${process.env.MEETUP_API_KEY}&language=de-DE&region=DE&release_date.gte=2016-11-16&release_date.lte=2016-12-02&with_release_type=2|3`
+  return client.query(SQL, values)
+    .then (result =>{
+      if(result.rowCount > 0){
+        response.send(result.rows);
+      }else {
 
 
-//         console.log(url)
-//         superagent.get(url)
-//           .then(result => {
-//             const movies = result.body.events.map(movie => {
-//               const event = new Movie(movie)
-//               return event
-//             });
-//             let newSQL = `INSERT INTO movies (title, released_on, total_votes, title, average_votes, popularity, image_url, overview) values ($1, $2, $3, $4, $5, $6, $7, $8);`;
-//             movies.forEach(movie => {
-//               let newValues = Object.values(movie);
-//               return client.query(newSQL, newValues)
-//                 .then(result => {
-//                   console.log('297', result.rows)
-//                   console.log('298', result.rows[0].id)
-//                 })
-//                 .catch(console.error);
-//             })
-//             response.send(movies);
-//           })
-//         //.catch(error => handleError(error,response))
-//       }
-//     })
+        const url = `https://api.themoviedb.org/3/discover/movie?api_key=${process.env.MEETUP_API_KEY}&language=de-DE&region=DE&release_date.gte=2016-11-16&release_date.lte=2016-12-02&with_release_type=2|3`
+         console.log(url);
+        console.log(url);
 
-// }
+        console.log(url)
+        superagent.get(url)
+          .then(result => {
+            const movies = result.body.events.map(movie => {
+              const event = new Movie(movie)
+              return event
+            });
+            let newSQL = `INSERT INTO movies (title, released_on, total_votes, title, average_votes, popularity, image_url, overview) values ($1, $2, $3, $4, $5, $6, $7, $8);`;
+            movies.forEach(movie => {
+              let newValues = Object.values(movie);
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('297', result.rows)
+                  console.log('298', result.rows[0].id)
+                })
+                .catch(console.error);
+            })
+            response.send(movies);
+          })
+        //.catch(error => handleError(error,response))
+      }
+    })
 
-// function getYelp(request, response) {
-//   const SQL = `SELECT * FROM yelp WHERE location_id$1;`;
-//   const values = [request.query.data.id]
+}
 
-//   return client.query(SQL, value)
-//     .then(result => {
-//       if(result.rows > 0) {
-//         response.send(result.rows)
-//       }else {
-//         const url = `https://api.yelp.com/v3/transactions/delivery/search?${request.query.data.latitude}&${request.query.data.longitude}`
+function getYelp(request, response) {
+  const SQL = `SELECT * FROM yelp WHERE location_id$1;`;
+  const values = [request.query.data.id]
+
+  return client.query(SQL, value)
+    .then(result => {
+      if(result.rows > 0) {
+        response.send(result.rows)
+      }else {
+        const url = `https://api.yelp.com/v3/transactions/delivery/search?${request.query.data.latitude}&${request.query.data.longitude}`
 
 
-//         console.log(url)
-//         superagent.get(url)
-//           .then(result => {
-//             const yelps = result.body.events.map(yelp => {
-//               const event = new Yelp(yelp)
-//               return event
-//             });
-//             let newSQL = `INSERT INTO yelp (name, rating, image_url) values ($1,$2,$3);`;
-//             yelps.forEach(yelp => {
-//               let newValues = Object.values(yelp);
-//               return client.query(newSQL, newValues)
-//                 .then(result => {
-//                   console.log('338', result.rows)
-//                   console.log('339', result.rows[0].id)
-//                 })
-//                 .catch(console.error)
-//             })
-//             response.send(yelps);
-//           })
-//       }
-//     })
-// }
+        console.log(url)
+        superagent.get(url)
+          .then(result => {
+            const yelps = result.body.events.map(yelp => {
+              const event = new Yelp(yelp)
+              return event
+            });
+            let newSQL = `INSERT INTO yelp (name, rating, image_url) values ($1,$2,$3);`;
+            yelps.forEach(yelp => {
+              let newValues = Object.values(yelp);
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('338', result.rows)
+                  console.log('339', result.rows[0].id)
+                })
+                .catch(console.error)
+            })
+            response.send(yelps);
+          })
+      }
+    })
+}
 
